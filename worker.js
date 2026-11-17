@@ -127,7 +127,7 @@ async function sign(value, secret) {
     ['sign'],
   );
   const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value));
-  return base64UrlEncode(String.fromCharCode(...new Uint8Array(signature)));
+  return base64UrlEncodeBytes(new Uint8Array(signature));
 }
 
 async function constantTimeEqual(a, b) {
