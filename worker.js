@@ -144,13 +144,19 @@ async function constantTimeEqual(a, b) {
 }
 
 function base64UrlEncode(value) {
-  const binary = typeof value === 'string' ? value : String(value);
+  return base64UrlEncodeBytes(new TextEncoder().encode(value));
+}
+
+function base64UrlEncodeBytes(bytes) {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 function base64UrlDecode(value) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  return atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
+  const binary = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
+  return new TextDecoder().decode(Uint8Array.from(binary, char => char.charCodeAt(0)));
 }
 
 function getCookie(request, name) {
