@@ -10,10 +10,24 @@
   <title>Image Search Hub</title>
 </head>
 <body>
-  <main class="shell">
+  <section id="loginPanel" class="login-shell hidden">
+    <form id="loginForm" class="login-card">
+      <div class="eyebrow">PRIVATE ACCESS</div>
+      <h1>Image Search Hub</h1>
+      <p class="subtitle">請登入以使用圖片搜尋工具。</p>
+      <label for="authUsername">帳號</label>
+      <input id="authUsername" name="username" type="text" autocomplete="username" required maxlength="128">
+      <label for="authPassword">密碼</label>
+      <input id="authPassword" name="password" type="password" autocomplete="current-password" required maxlength="256">
+      <button class="primary large" type="submit">登入</button>
+      <p id="loginStatus" class="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <main id="appShell" class="shell hidden">
     <header class="topbar">
       <div><div class="eyebrow">REVERSE IMAGE SEARCH</div><h1>Image Search Hub</h1><p class="subtitle">一次準備圖片，集中開啟多個反向圖片搜尋。</p></div>
-      <button id="themeToggle" class="icon-btn" type="button" aria-label="切換深色模式">☾</button>
+      <div class="topbar-actions"><button id="themeToggle" class="icon-btn" type="button" aria-label="切換深色模式">☾</button><button id="logoutButton" class="secondary" type="button">登出</button></div>
     </header>
 
     <section class="card">
@@ -38,10 +52,11 @@
       <div id="results" class="results" aria-live="polite"></div>
     </section>
 
-    <section class="card compact"><div class="section-head"><div><h2>隱私與處理</h2><p id="privacyText">圖片預設只在瀏覽器端處理；需要提供圖片 URL 給搜尋引擎時，Worker 只將圖片暫存於 Cloudflare KV，期限約 10 分鐘。上傳 API 只接受同源請求，並限制每個 IP 每分鐘最多 10 次上傳。</p></div></div><div class="chips"><span>Local-first</span><span>EXIF stripped</span><span>WebP normalize</span><span>10 min KV</span><span>10 uploads/min</span></div></section>
+    <section class="card compact"><div class="section-head"><div><h2>隱私與處理</h2><p id="privacyText">圖片預設只在瀏覽器端處理；需要提供圖片 URL 給搜尋引擎時，Worker 只將圖片暫存於 Cloudflare KV，期限約 10 分鐘。圖片上傳與刪除 API 需要登入；供搜尋引擎讀取的隨機短期圖片 URL 仍可公開讀取。</p></div></div><div class="chips"><span>Local-first</span><span>EXIF stripped</span><span>WebP normalize</span><span>10 min KV</span><span>Login protected</span></div></section>
 
-    <footer><span>Image Search Hub · V1.3</span><a href="https://github.com/louis99941/image-search-hub" target="_blank" rel="noreferrer">GitHub</a></footer>
+    <footer><span>Image Search Hub · V1.4</span><a href="https://github.com/louis99941/image-search-hub" target="_blank" rel="noreferrer">GitHub</a></footer>
   </main>
+  <script type="module" src="/src/auth.js"></script>
   <script type="module" src="/src/app.js"></script>
   <script type="module" src="/src/v13.js"></script>
 </body>
