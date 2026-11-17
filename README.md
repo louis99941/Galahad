@@ -8,23 +8,42 @@
 
 > 本 repo 使用 Cloudflare Workers + Static Assets。圖片暫存使用 Workers KV，不需要 R2、D1 或其他外部儲存。
 
-## V1.3
+## V1.4
 
-- V1.2 的真人照片 / 人臉、一般圖片、動漫 / 插畫三組搜尋分類
-- 真人照片快速搜尋：PimEyes、FaceCheck.ID、Google Lens、Yandex、TinEye、Lenso.ai、Copyseeker
-- 每個站台可單獨搜尋；不支援穩定 URL 啟動的站台直接開啟官方網站供使用者上傳
-- Search Selected / Search All
-- 每個搜尋引擎顯示目前啟動狀態：可啟動、已啟動、啟動失敗
-- 自動 URL 型與手動上傳型的能力狀態清楚標示
-- 搜尋引擎勾選狀態可記住在目前瀏覽器，並可一鍵恢復預設
-- 設定只使用瀏覽器 localStorage，不保存圖片或搜尋歷史
-- 深色模式
+- V1.3 的真人照片 / 人臉、一般圖片、動漫 / 插畫搜尋分類與引擎狀態
+- 新增登入畫面，帳號密碼由 Cloudflare Worker 環境變數讀取
+- Worker 使用 HMAC-SHA256 簽署 Session，Cookie 為 HttpOnly、Secure、SameSite=Strict
+- 登入 Session 有效期限 12 小時，並提供登出
+- 登入失敗限制：每個 IP 每 5 分鐘最多 5 次嘗試
+- 圖片上傳與刪除 API 必須登入
+- 搜尋引擎讀取的隨機短期圖片 URL 保留公開 GET 權限，避免外部搜尋引擎無法抓圖
+- 靜態前端檔案本身不是機密資料；未登入時只顯示登入畫面，所有受保護操作由 Worker 驗證
+- 搜尋引擎勾選狀態記住在目前瀏覽器，可一鍵恢復預設
+- 不保存圖片或搜尋歷史
 - Cloudflare Worker + Static Assets
 - Worker KV 十分鐘暫存 URL
-- 上傳 API 僅接受同源請求
-- 上傳 API 每個 IP 每分鐘最多 10 次
-- 換圖、清除、頁面離開時主動刪除暫存內容
-- 暫存到期後由 KV TTL 自然失效
+
+## Cloudflare 登入設定
+
+在 Cloudflare Dashboard 開啟 **Workers & Pages → image-search-hub → Settings → Variables and Secrets**，新增：
+
+| 名稱 | 類型 | 用途 |
+|---|---|---|
+| `AUTH_USERNAME` | Secret（建議） | 登入帳號 |
+| `AUTH_PASSWORD` | Secret | 登入密碼 |
+| `SESSION_SECRET` | Secret | Session 簽章密鑰，請使用至少 32 bytes 的隨機值 |
+
+三個值都必須設定，修改後重新部署或使用 Dashboard 的部署流程讓新設定生效。不要把密碼或 Session Secret 寫進 `wrangler.toml`、GitHub 原始碼或公開 Issue。
+
+可用以下方式產生隨機 Session Secret（在本機 PowerShell 7 執行）：
+
+```powershell
+$bytes = [byte[]]::new(48)
+[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+將輸出結果貼到 Cloudflare 的 `SESSION_SECRET` Secret 欄位。帳號與密碼可自行設定，不要使用容易猜測的值。
 
 ## 搜尋策略
 
@@ -44,16 +63,17 @@
 
 Worker 會：
 
-1. 驗證請求是否來自同一個網站來源。
-2. 以 Cloudflare-Connecting-IP 做簡單的每分鐘上傳次數限制。
-3. 產生隨機 UUID。
-4. 將圖片放進 Workers KV。
-5. 回傳 `/api/image/<uuid>` URL。
-6. 將圖片 TTL 設為 600 秒。
-7. 前端換圖、清除或離開頁面時盡可能發出 DELETE。
-8. TTL 到期後 KV 自然失效，無法再取得圖片。
+1. 驗證登入 Session。
+2. 驗證請求是否來自同一個網站來源。
+3. 以 Cloudflare-Connecting-IP 做每分鐘上傳次數限制。
+4. 產生隨機 UUID。
+5. 將圖片放進 Workers KV。
+6. 回傳 `/api/image/<uuid>` URL。
+7. 將圖片 TTL 設為 600 秒。
+8. 前端換圖、清除或離開頁面時盡可能發出 DELETE（DELETE 需要登入）。
+9. TTL 到期後 KV 自然失效，無法再取得圖片。
 
-因此這個專案本身不建立圖片資料庫、永久圖片儲存或使用者歷史紀錄。
+為了讓 Google Lens 等外部搜尋服務讀取圖片，帶有隨機 UUID 的短期圖片 GET URL 不要求登入。請勿將這類 URL 分享給不信任的人；圖片最長保留約 10 分鐘。
 
 ## 開發
 
@@ -63,6 +83,8 @@ Worker 會：
 npx wrangler dev
 npx wrangler deploy
 ```
+
+本機開發也需要設定 `AUTH_USERNAME`、`AUTH_PASSWORD`、`SESSION_SECRET` 三個環境變數及既有的 `IMAGE_KV` binding。
 
 ## 目前限制
 
@@ -75,8 +97,8 @@ npx wrangler deploy
 
 ## Roadmap
 
-V1.4：在官方 API 或穩定資料來源可用的前提下，加入結果聚合與來源整理。
+V1.5：自訂搜尋組、搜尋結果啟動紀錄（只保留在目前頁面，不寫入歷史）。
 
-V2：瀏覽器擴充功能、PWA share target、自訂搜尋組。
+V2：瀏覽器擴充功能、PWA share target。
 
-V3：在合法且穩定的資料來源前提下，加入結果去重、相似來源整理與跨引擎摘要。
+V3：在官方 API 或穩定資料來源可用的前提下，加入結果聚合、去重與來源摘要。
